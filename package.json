@@ -1,5 +1,5 @@
 {
-  "name": "ts-monads",
+  "name": "@dodgez/ts-monads",
   "version": "0.1.0",
   "description": "Monads in TypeScript",
   "main": "dist/index.js",
