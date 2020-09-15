@@ -63,8 +63,8 @@ export function io_error(o: Object): IO<void> {
 }
 
 /**
- * 
- * @param command 
+ * Gets user input with a prompt
+ * @param s prompt for the user
  */
 export function io_prompt(s: string): IO<Maybe<string>> {
     return IO.returnLazy(() => {
