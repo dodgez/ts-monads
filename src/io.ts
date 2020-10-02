@@ -2,14 +2,20 @@ import { Monad } from './monad';
 import { Just, Maybe, Nothing } from './maybe';
 
 export class IO<T> implements Monad<T> {
-    private constructor(private value: () => T) { }
+    private constructor(private value: Promise<() => T>) { }
 
     /**
      * Calls `f` with unwrapped value
      * @param f function to call with unwrapped value
      */
     $$_<U>(f: (arg0: T) => IO<U>): IO<U> {
-        return f(this.resolve());
+        return new IO(new Promise(cb => {
+            this.resolve().then(val => {
+                f(val()).value.then(val2 => {
+                    cb(val2);
+                })
+            });
+        }));
     }
 
     /**
@@ -17,8 +23,9 @@ export class IO<T> implements Monad<T> {
      * @param b
      */
     $$<U>(b: IO<U>): IO<U> {
-        this.resolve();
-        return b;
+        return this.$$_(_ => {
+            return b;
+        });
     }
 
     /**
@@ -26,7 +33,7 @@ export class IO<T> implements Monad<T> {
      * @param value value to wrap
      */
     static return<T>(value: T): IO<T> {
-        return new IO(() => value);
+        return new IO(Promise.resolve(() => value));
     }
 
     /**
@@ -34,15 +41,23 @@ export class IO<T> implements Monad<T> {
      * @param value lambda function wrapping value
      */
     static returnLazy<T>(value: () => T): IO<T> {
-        return new IO(value);
+        return new IO(Promise.resolve(value));
+    }
+
+    /**
+     * Wrap a promise into an IO value
+     * @param value lambda function wrapping value
+     */
+    static returnPromise<T>(value: Promise<T>): IO<T> {
+        return new IO(value.then(val => (() => val)));
     }
 
     /**
      * Evaluates `this`
      * @internal
      */
-    resolve(): T {
-        return this.value();
+    resolve(): Promise<() => T> {
+        return this.value;
     }
 }
 
@@ -81,6 +96,6 @@ export function io_prompt(s: string): IO<Maybe<string>> {
  *  to be used sparingly
  * @param command the action to be executed
  */
-export function io_main<T>(command: IO<T>): T {
-    return command.resolve();
+export function io_main<T>(command: IO<T>): Promise<T> {
+    return new Promise(cb => command.resolve().then(val => cb(val())));
 }
